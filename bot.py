@@ -190,7 +190,7 @@ async def handle_message(message: Message):
     await message.answer(t, parse_mode="Markdown", disable_web_page_preview=True)
 
 
-# ── Main ───────────────────────────────────────────────────────────────────────
+# ── Webhook ────────────────────────────────────────────────────────────────────
 
 from aiogram.types import Update
 
@@ -200,29 +200,28 @@ WEBHOOK_PATH = f"/webhook/{TG_TOKEN}"
 async def telegram_webhook(request: Request):
     data = await request.json()
     update = Update(**data)
-    await dp.feed_update(bot, update)
+    await dp.feed_webhook_update(bot, update)
     return {"ok": True}
 
 @app.on_event("startup")
 async def on_startup():
-    if bot and WEBHOOK_HOST:
+    if not bot:
+        return
+    if WEBHOOK_HOST:
         webhook_url = f"https://{WEBHOOK_HOST}{WEBHOOK_PATH}"
         await bot.set_webhook(webhook_url, drop_pending_updates=True)
-        print(f"Webhook set: {webhook_url}")
-    elif bot:
+        print(f"Webhook: {webhook_url}")
+    else:
         await bot.delete_webhook(drop_pending_updates=True)
-        print("No RAILWAY_PUBLIC_DOMAIN - webhook not set")
+        print("WARNING: RAILWAY_PUBLIC_DOMAIN not set, webhook not configured")
 
 @app.on_event("shutdown")
 async def on_shutdown():
     if bot:
         await bot.delete_webhook()
 
-async def main():
+if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
-    print(f"Starting Tender Bot on port {port}")
-    await uvicorn.Server(uvicorn.Config(app=app, host="0.0.0.0", port=port, log_level="info")).serve()
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    print(f"Starting on port {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)
