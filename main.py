@@ -70,10 +70,21 @@ async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if ai: t += f"\n{'─'*20}\n*AI-анализ:*\n{ai}"
     await update.message.reply_text(t, parse_mode="Markdown", disable_web_page_preview=True)
 
+async def error_handler(update, context):
+    import traceback
+    err = context.error
+    print(f"Error: {err}")
+    traceback.print_exc()
+
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
+app.add_error_handler(error_handler)
 
 if __name__ == "__main__":
     print("Bot started")
-    app.run_polling(drop_pending_updates=True)
+    app.run_polling(
+        drop_pending_updates=True,
+        allowed_updates=["message"],
+        close_loop=False,
+    )
