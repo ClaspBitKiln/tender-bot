@@ -8,7 +8,7 @@ import os
 import asyncio
 import xml.etree.ElementTree as ET
 import httpx
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message
@@ -19,6 +19,7 @@ app = FastAPI(title="Tender Bot")
 
 TG_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 GROQ_KEY = os.getenv("GROQ_API_KEY", "")
+WEBHOOK_HOST = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
 
 bot = Bot(token=TG_TOKEN) if TG_TOKEN else None
 dp  = Dispatcher() if bot else None
@@ -191,32 +192,37 @@ async def handle_message(message: Message):
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 
-async def start_bot():
-    if bot and dp:
-        print("Telegram bot starting...")
+from aiogram.types import Update
+
+WEBHOOK_PATH = f"/webhook/{TG_TOKEN}"
+
+@app.post(WEBHOOK_PATH)
+async def telegram_webhook(request: Request):
+    data = await request.json()
+    update = Update(**data)
+    await dp.feed_update(bot, update)
+    return {"ok": True}
+
+@app.on_event("startup")
+async def on_startup():
+    if bot and WEBHOOK_HOST:
+        webhook_url = f"https://{WEBHOOK_HOST}{WEBHOOK_PATH}"
+        await bot.set_webhook(webhook_url, drop_pending_updates=True)
+        print(f"Webhook set: {webhook_url}")
+    elif bot:
         await bot.delete_webhook(drop_pending_updates=True)
-        await dp.start_polling(bot, allowed_updates=["message"])
+        print("No RAILWAY_PUBLIC_DOMAIN - webhook not set")
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    if bot:
+        await bot.delete_webhook()
 
 async def main():
     import uvicorn
-    from uvicorn.config import Config
-    from uvicorn.server import Server
-
-    print("=" * 50)
-    print("🚀 Tender Bot")
-    print("=" * 50)
-    print(f"API:  http://localhost:8000")
-    print(f"Test: http://localhost:8000/search/металлопрокат")
-    print()
-
     port = int(os.getenv("PORT", 8000))
-    config = Config(app=app, host="0.0.0.0", port=port, log_level="info")
-    server = Server(config)
-
-    if bot:
-        await asyncio.gather(server.serve(), start_bot())
-    else:
-        await server.serve()
+    print(f"Starting Tender Bot on port {port}")
+    await uvicorn.Server(uvicorn.Config(app=app, host="0.0.0.0", port=port, log_level="info")).serve()
 
 if __name__ == "__main__":
     asyncio.run(main())
