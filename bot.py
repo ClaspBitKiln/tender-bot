@@ -193,8 +193,9 @@ async def handle_message(message: Message):
 
 async def start_bot():
     if bot and dp:
-        print("🤖 Telegram bot started")
-        await dp.start_polling(bot)
+        print("Telegram bot starting...")
+        await bot.delete_webhook(drop_pending_updates=True)
+        await dp.start_polling(bot, allowed_updates=["message"])
 
 async def main():
     import uvicorn
