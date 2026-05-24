@@ -82,9 +82,11 @@ app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
 app.add_error_handler(error_handler)
 
 if __name__ == "__main__":
+    import time
+    print("Bot waiting 10s for old instance to stop...")
+    time.sleep(10)
     print("Bot started")
     app.run_polling(
         drop_pending_updates=True,
         allowed_updates=["message"],
-        close_loop=False,
     )
