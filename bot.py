@@ -208,7 +208,8 @@ async def main():
     print(f"Test: http://localhost:8000/search/металлопрокат")
     print()
 
-    config = Config(app=app, host="0.0.0.0", port=8000, log_level="warning")
+    port = int(os.getenv("PORT", 8000))
+    config = Config(app=app, host="0.0.0.0", port=port, log_level="info")
     server = Server(config)
 
     if bot:
